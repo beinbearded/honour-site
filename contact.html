@@ -116,15 +116,12 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:48px
 <script>
 (function(){
 // ═══════════════════════════════════════════════════════════════════════════
-//  MANUAL SETUP REQUIRED (one step for Emre):
-//  Replace the placeholder below with your free form-service endpoint.
-//  Recommended: Formspree free tier — create a form, copy its endpoint URL
-//  (looks like https://formspree.io/f/xxxxxxx), and paste it here. Then in the
-//  Formspree form settings, set the notification email to info@honour-media.com.
-//  Until this is replaced, the form runs in DEMO MODE (validates + shows the
-//  success panel + fires the analytics beacon, but does NOT persist a lead).
+//  Live endpoint: Formspree (free tier), set 2026-07-12 by Emre.
+//  To change providers, replace the URL below; anything not starting with
+//  "http" puts the form back into DEMO MODE (validates + success panel +
+//  analytics beacon, but does NOT persist a lead).
 // ═══════════════════════════════════════════════════════════════════════════
-const FORM_ENDPOINT_CONST = "REPLACE_WITH_FREE_FORM_SERVICE_ENDPOINT";
+const FORM_ENDPOINT_CONST = "https://formspree.io/f/xkodwkne";
 // Resolve the live endpoint: the form's data-endpoint attribute wins if it is a
 // real URL, otherwise fall back to the const above. Anything not starting with
 // "http" (incl. the placeholder / empty attr) keeps the form in DEMO MODE.
