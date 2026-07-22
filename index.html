@@ -515,6 +515,121 @@
     .telemetry { font-size: 10px; letter-spacing: 0.12em; gap: 6px; }
   }
 
+  /* ---------- In-page contact dialog (progressive enhancement) ----------
+     Built in JS on the hero "Contact" CTA; the mailto: href is the no-JS
+     fallback. HUD/cosmic language, existing tokens only (WCAG AA: --ink /
+     --ink-soft / --cyan / --mint, never --ink-faint). No new animations —
+     the only transitions are on inputs/close and are killed by the global
+     reduced-motion rule below. */
+  .cx-backdrop {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    background: rgba(2,3,9,0.72);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    overflow-y: auto;
+  }
+  .cx-backdrop[hidden] { display: none; }
+
+  .cx-dialog {
+    position: relative;
+    width: 100%; max-width: 480px; margin: auto;
+    border-radius: 18px;
+    border: 1px solid var(--panel-line);
+    background: linear-gradient(180deg, rgba(9,13,24,0.95), rgba(6,9,18,0.9));
+    box-shadow: 0 50px 140px -50px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.05);
+    padding: 30px clamp(20px, 4vw, 34px) 26px;
+    outline: none;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+  .cx-corner {
+    position: absolute; width: 16px; height: 16px;
+    border: 1px solid var(--hud-dim); pointer-events: none;
+  }
+  .cx-corner.tl { top: 10px; left: 10px; border-right: 0; border-bottom: 0; }
+  .cx-corner.br { bottom: 10px; right: 10px; border-left: 0; border-top: 0; }
+
+  .cx-close {
+    position: absolute; top: 12px; right: 12px;
+    width: 34px; height: 34px; display: grid; place-items: center;
+    background: rgba(121,230,255,0.05);
+    border: 1px solid var(--panel-line);
+    border-radius: 9px;
+    color: var(--ink-soft); font-size: 20px; line-height: 1;
+    cursor: pointer;
+    transition: color .2s, border-color .2s, background .2s;
+  }
+  .cx-close:hover { color: var(--ink); border-color: var(--cyan); background: rgba(127,224,255,0.12); }
+
+  .cx-tag {
+    font-family: var(--mono);
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--cyan);
+    margin: 0 0 10px;
+  }
+  .cx-heading {
+    font-family: var(--sans);
+    font-size: 1.4rem; font-weight: 600; letter-spacing: -0.01em;
+    color: var(--ink);
+    margin: 0 0 18px;
+  }
+
+  .cx-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .cx-field label {
+    font-family: var(--mono);
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .cx-input, .cx-textarea {
+    font-family: inherit; font-size: 15px; width: 100%;
+    color: var(--ink);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--panel-line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .cx-input::placeholder, .cx-textarea::placeholder { color: rgba(174,185,205,0.55); }
+  .cx-input:focus, .cx-textarea:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(127,224,255,0.20); }
+  .cx-textarea { min-height: 112px; resize: vertical; line-height: 1.5; }
+
+  /* Honeypot: visually hidden, out of tab order + AT tree. */
+  .cx-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+  .cx-submit { width: 100%; justify-content: center; margin-top: 6px; }
+  .btn-primary:disabled { cursor: default; opacity: 0.85; transform: none; }
+  .btn-primary:disabled:hover { transform: none; box-shadow: 0 14px 40px -14px rgba(255,196,120,0.65); }
+
+  .cx-error {
+    display: none;
+    margin: 2px 0 14px;
+    font-size: 13.5px; line-height: 1.5;
+    color: var(--ink);
+  }
+  .cx-error.is-shown { display: block; }
+  .cx-error a { color: var(--cyan); text-decoration: underline; text-underline-offset: 2px; }
+  .cx-error a:hover { color: #b6efff; }
+
+  .cx-confirm { outline: none; }
+  .cx-confirm .cf-tag {
+    font-family: var(--mono);
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--mint);
+    margin: 0 0 10px;
+  }
+  .cx-confirm .cf-head {
+    font-size: 1.3rem; font-weight: 600; letter-spacing: -0.01em;
+    color: var(--ink);
+    margin: 0 0 8px;
+  }
+  .cx-confirm .cf-body {
+    font-size: 0.98rem; line-height: 1.6;
+    color: var(--ink-soft);
+    margin: 0;
+  }
+
   /* ---------- Reduced motion: freeze EVERYTHING to a static frame ---------- */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
@@ -1039,6 +1154,219 @@
   } else {
     raf = requestAnimationFrame(frame);
   }
+})();
+</script>
+
+<script>
+// Progressive enhancement: in-page contact dialog on the hero "Contact" CTA.
+// No-JS fallback = the untouched mailto: href. Only network call is the
+// Formspree endpoint, fired ONLY on a real submit. DOM built via
+// createElement/textContent (no innerHTML); zero new page-load requests.
+(function () {
+  "use strict";
+
+  // Unique to the hero CTA: the footer info@ link has no .btn-ghost class.
+  var trigger = document.querySelector('a.btn-ghost[href^="mailto:info@honour-media.com"]');
+  if (!trigger || !window.fetch) return;
+
+  var ENDPOINT = "https://formspree.io/f/xkodwkne";
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function field(id, name, labelText, type) {
+    var wrap = el("div", "cx-field");
+    var lbl = el("label", null, labelText);
+    lbl.setAttribute("for", id);
+    var input = type === "textarea" ? el("textarea", "cx-textarea") : el("input", "cx-input");
+    input.id = id;
+    input.name = name;
+    if (type !== "textarea") input.type = type;
+    wrap.appendChild(lbl);
+    wrap.appendChild(input);
+    return { wrap: wrap, input: input };
+  }
+
+  // ---- Build the dialog once ----
+  var backdrop = el("div", "cx-backdrop");
+  backdrop.id = "cx-backdrop";
+  backdrop.setAttribute("hidden", "");
+
+  var dialog = el("div", "cx-dialog");
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  dialog.setAttribute("aria-labelledby", "cx-title");
+  dialog.setAttribute("tabindex", "-1");
+
+  var cTL = el("span", "cx-corner tl"); cTL.setAttribute("aria-hidden", "true");
+  var cBR = el("span", "cx-corner br"); cBR.setAttribute("aria-hidden", "true");
+
+  var closeBtn = el("button", "cx-close", "×");
+  closeBtn.setAttribute("type", "button");
+  closeBtn.setAttribute("aria-label", "Close contact form");
+
+  var tag = el("p", "cx-tag", "TRANSMISSION // OPEN");
+  var heading = el("h2", "cx-heading", "Contact Honour Media");
+  heading.id = "cx-title";
+
+  var form = el("form", "cx-form");
+
+  // Honeypot — visually hidden, out of tab order + AT tree.
+  var hpWrap = el("div", "cx-hp");
+  hpWrap.setAttribute("aria-hidden", "true");
+  var hpLabel = el("label", null, "Leave this field empty");
+  hpLabel.setAttribute("for", "cx-website");
+  var hp = el("input");
+  hp.type = "text"; hp.id = "cx-website"; hp.name = "website";
+  hp.tabIndex = -1; hp.setAttribute("autocomplete", "off");
+  hpWrap.appendChild(hpLabel); hpWrap.appendChild(hp);
+
+  var fName = field("cx-name", "name", "Name (optional)", "text");
+  fName.input.setAttribute("autocomplete", "name");
+  var fEmail = field("cx-email", "email", "Email", "email");
+  fEmail.input.required = true;
+  fEmail.input.setAttribute("autocomplete", "email");
+  fEmail.input.setAttribute("placeholder", "you@company.com");
+  var fMsg = field("cx-message", "message", "Message", "textarea");
+  fMsg.input.required = true;
+  fMsg.input.setAttribute("rows", "4");
+
+  var errLine = el("p", "cx-error");
+  errLine.setAttribute("aria-live", "polite");
+
+  var submitBtn = el("button", "btn btn-primary cx-submit", "Send message");
+  submitBtn.setAttribute("type", "submit");
+
+  form.appendChild(hpWrap);
+  form.appendChild(fName.wrap);
+  form.appendChild(fEmail.wrap);
+  form.appendChild(fMsg.wrap);
+  form.appendChild(errLine);
+  form.appendChild(submitBtn);
+
+  dialog.appendChild(cTL);
+  dialog.appendChild(cBR);
+  dialog.appendChild(closeBtn);
+  dialog.appendChild(tag);
+  dialog.appendChild(heading);
+  dialog.appendChild(form);
+  backdrop.appendChild(dialog);
+  document.body.appendChild(backdrop);
+
+  // ---- State + inline states ----
+  var lastFocus = null, busy = false;
+
+  function clearError() {
+    while (errLine.firstChild) errLine.removeChild(errLine.firstChild);
+    errLine.classList.remove("is-shown");
+  }
+  function showError() {
+    clearError();
+    errLine.appendChild(document.createTextNode("Something went wrong. Please try again — or email "));
+    var a = el("a", null, "info@honour-media.com");
+    a.setAttribute("href", "mailto:info@honour-media.com");
+    errLine.appendChild(a);
+    errLine.appendChild(document.createTextNode("."));
+    errLine.classList.add("is-shown");
+  }
+  function showConfirm() {
+    if (dialog.querySelector(".cx-confirm")) return;
+    form.style.display = "none";
+    tag.style.display = "none";
+    var box = el("div", "cx-confirm");
+    box.setAttribute("role", "status");
+    box.setAttribute("aria-live", "polite");
+    box.setAttribute("tabindex", "-1");
+    box.appendChild(el("p", "cf-tag", "TRANSMISSION // RECEIVED"));
+    box.appendChild(el("p", "cf-head", "Message sent."));
+    box.appendChild(el("p", "cf-body", "Thanks — we'll get back to you at the address you gave."));
+    dialog.appendChild(box);
+    form.setAttribute("aria-busy", "false");
+    box.focus();
+  }
+  function resetToForm() {
+    var box = dialog.querySelector(".cx-confirm");
+    if (box) box.parentNode.removeChild(box);
+    form.style.display = "";
+    tag.style.display = "";
+    clearError();
+    busy = false;
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Send message";
+    form.setAttribute("aria-busy", "false");
+  }
+
+  function focusablesIn() {
+    var list = dialog.querySelectorAll(
+      'button:not([disabled]), a[href], input:not([disabled]):not([tabindex="-1"]), textarea:not([disabled])'
+    );
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].offsetParent !== null) out.push(list[i]);
+    }
+    return out;
+  }
+
+  function openDialog() {
+    lastFocus = document.activeElement;
+    resetToForm();
+    backdrop.removeAttribute("hidden");
+    fName.input.focus();
+  }
+  function closeDialog() {
+    backdrop.setAttribute("hidden", "");
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  trigger.addEventListener("click", function (e) { e.preventDefault(); openDialog(); });
+  closeBtn.addEventListener("click", closeDialog);
+  backdrop.addEventListener("click", function (e) { if (e.target === backdrop) closeDialog(); });
+
+  backdrop.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { e.preventDefault(); closeDialog(); return; }
+    if (e.key === "Tab") {
+      var f = focusablesIn();
+      if (!f.length) { e.preventDefault(); dialog.focus(); return; }
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (busy) return;
+    clearError();
+
+    // Honeypot filled => silent success, never touch the network.
+    if (hp.value.trim() !== "") { showConfirm(); return; }
+
+    var original = submitBtn.textContent;
+    busy = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Sending…";
+    form.setAttribute("aria-busy", "true");
+
+    function fail() {
+      busy = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = original;
+      form.setAttribute("aria-busy", "false");
+      showError();
+    }
+
+    fetch(ENDPOINT, {
+      method: "POST",
+      body: new FormData(form),
+      headers: { Accept: "application/json" }
+    }).then(function (res) {
+      if (res && res.ok) showConfirm();
+      else fail();
+    }).catch(fail);
+  });
 })();
 </script>
 </html>
